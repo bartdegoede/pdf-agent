@@ -17,6 +17,8 @@ curl -sSL https://install.python-poetry.org | python3 -
 
 # Install dependencies
 poetry install
+# Or install from pypi
+pip install pdf_mind
 
 # Install other dependencies
 brew install ghostscript
@@ -27,7 +29,7 @@ brew install poppler
 ## Usage
 
 ```python
-from pdf_agent import PDFExtractionAgent
+from pdf_mind import PDFExtractionAgent
 
 agent = PDFExtractionAgent()
 result = agent.process("path/to/document.pdf")
