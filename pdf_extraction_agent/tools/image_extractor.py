@@ -1,11 +1,16 @@
 import base64
 import io
+import logging
 import os
+import time
 from typing import Any, Dict, List, Optional
 
 from langchain_openai import ChatOpenAI
 from pdf2image import convert_from_path
 from PIL import Image
+
+# Get logger
+logger = logging.getLogger("pdf_extraction_agent.image_extractor")
 
 
 class ImageExtractorTool:
@@ -70,29 +75,45 @@ class ImageExtractorTool:
 
     def _extract_images_from_pdf(self, pdf_path: str) -> List[Dict[str, Any]]:
         """Extract images from PDF pages."""
+        logger.info(f"Extracting images from PDF: {pdf_path}")
+        start_time = time.time()
         try:
             # Convert PDF pages to images
+            logger.info("Converting PDF pages to images")
+            conversion_start = time.time()
             page_images = convert_from_path(pdf_path)
+            conversion_time = time.time() - conversion_start
+            logger.info(f"PDF converted to {len(page_images)} images in {conversion_time:.2f} seconds")
+            
             result = []
 
             for page_num, page_image in enumerate(page_images, 1):
+                logger.info(f"Processing page {page_num}/{len(page_images)} for image extraction")
                 # For real image extraction, we would use more sophisticated methods
                 # such as object detection to identify image regions
                 # For now, we'll use the whole page as an image
                 result.append({"page": page_num, "image": page_image})
 
+            elapsed = time.time() - start_time
+            logger.info(f"Image extraction completed in {elapsed:.2f} seconds, extracted {len(result)} images")
             return result
         except Exception as e:
-            print(f"Error extracting images from PDF: {e}")
+            elapsed = time.time() - start_time
+            logger.error(f"Error extracting images from PDF after {elapsed:.2f} seconds: {str(e)}", exc_info=True)
             return []
 
     def _generate_description(self, image: Image.Image, llm: Any) -> str:
         """Generate a description for an image using a vision-capable LLM."""
+        start_time = time.time()
         try:
             # Encode image to base64 for API
+            logger.info("Encoding image for LLM description")
+            encode_start = time.time()
             buffered = io.BytesIO()
             image.save(buffered, format="PNG")
             img_str = base64.b64encode(buffered.getvalue()).decode()
+            encode_time = time.time() - encode_start
+            logger.info(f"Image encoded in {encode_time:.2f} seconds")
 
             # Create prompt with the image
             messages = [
@@ -112,8 +133,17 @@ class ImageExtractorTool:
             ]
 
             # Call LLM
+            logger.info("Sending image to LLM API for description")
+            llm_start = time.time()
             response = llm.invoke(messages)
-            return response.content
+            description = response.content
+            llm_time = time.time() - llm_start
+            logger.info(f"LLM generated description ({len(description)} chars) in {llm_time:.2f} seconds")
+            
+            elapsed = time.time() - start_time
+            logger.info(f"Description generation completed in {elapsed:.2f} seconds")
+            return description
         except Exception as e:
-            print(f"Error generating image description: {e}")
+            elapsed = time.time() - start_time
+            logger.error(f"Error generating image description after {elapsed:.2f} seconds: {str(e)}", exc_info=True)
             return "Image description unavailable"
