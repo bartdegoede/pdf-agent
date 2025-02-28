@@ -2,7 +2,9 @@
 """
 Example script for using the PDF Extraction Agent.
 """
+
 import os
+
 from pdf_extraction_agent import PDFExtractionAgent
 
 # Get API key from environment
@@ -14,17 +16,17 @@ if not api_key:
 agent = PDFExtractionAgent(openai_api_key=api_key)
 
 # Process a PDF file
-pdf_path = "path/to/your/document.pdf"  # Replace with your PDF path
-if os.path.exists(pdf_path):
-    print(f"Processing {pdf_path}...")
-    result = agent.process(pdf_path)
-    
+PDF_PATH = "example.pdf"  # Replace with your PDF path
+if os.path.exists(PDF_PATH):
+    print(f"Processing {PDF_PATH}...")
+    result = agent.process(PDF_PATH)
+
     # Save the result to a markdown file
-    output_path = pdf_path.replace(".pdf", ".md")
-    with open(output_path, "w") as f:
+    OUTPUT_PATH = PDF_PATH.replace(".pdf", ".md")
+    with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
         f.write(result)
-    
-    print(f"Extraction complete! Results saved to {output_path}")
+
+    print(f"Extraction complete! Results saved to {OUTPUT_PATH}")
 else:
-    print(f"PDF file not found: {pdf_path}")
+    print(f"PDF file not found: {PDF_PATH}")
     print("Please update the 'pdf_path' variable with a valid PDF file path")
