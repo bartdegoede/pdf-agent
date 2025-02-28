@@ -21,7 +21,7 @@ poetry install
 # Install other dependencies
 brew install ghostscript
 brew install poppler
-# apt install ghostscript
+# apt install ghostscript poppler
 ```
 
 ## Usage
@@ -33,6 +33,8 @@ agent = PDFExtractionAgent()
 result = agent.process("path/to/document.pdf")
 print(result)
 ```
+
+Alternatively, look at [example.py](example.py) for an example that will output metadata on extracted items and token usage:
 
 ## Development
 
