@@ -1,8 +1,8 @@
 [tool.poetry]
-name = "pdf-extraction-agent"
+name = "pdf-mind"
 version = "0.1.1"
 description = "Agent for extracting structured content from PDFs using LangGraph"
-authors = ["Bart de Goede <bdegoede+pdf-extraction-agent@gmail.com>"]
+authors = ["Bart de Goede <bdegoede+pdf-mind@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
@@ -27,7 +27,7 @@ ruff = "^0.2.2"
 mypy = "^1.8.0"
 
 [tool.poetry.scripts]
-pdf-extract = "pdf_extraction_agent.cli:main"
+pdf-extract = "cli:main"
 
 [build-system]
 requires = ["poetry-core"]

@@ -3,8 +3,8 @@ from typing import Literal, Optional
 
 import click
 
-from pdf_agent import PDFExtractionAgent
-from pdf_agent.config import PDFExtractionConfig
+from pdf_mind import PDFExtractionAgent
+from pdf_mind.config import PDFExtractionConfig
 
 
 def _format_stats(stats: dict) -> str:

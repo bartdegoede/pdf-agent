@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock, patch
 
-from pdf_agent.tools.pdf_reader import PDFReaderTool
+from pdf_mind.tools.pdf_reader import PDFReaderTool
 
 
 class TestPDFReaderTool:

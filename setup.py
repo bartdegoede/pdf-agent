@@ -19,7 +19,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "pdf-extract=pdf_agent.cli:main",
+            "pdf-extract=cli:main",
         ],
     },
     python_requires=">=3.10",
