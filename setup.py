@@ -1,8 +1,8 @@
 from setuptools import find_packages, setup
 
 setup(
-    name="pdf-extraction-agent",
-    version="0.1.0",
+    name="pdf-mind",
+    version="0.1.2",
     packages=find_packages(),
     install_requires=[
         "langchain>=0.3.19",
@@ -19,7 +19,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "pdf-extract=cli:main",
+            "pdf-mind=cli:main",
         ],
     },
     python_requires=">=3.10",

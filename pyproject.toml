@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pdf-mind"
-version = "0.1.1"
+version = "0.1.2"
 description = "Agent for extracting structured content from PDFs using LangGraph"
 authors = ["Bart de Goede <bdegoede+pdf-mind@gmail.com>"]
 readme = "README.md"
