@@ -1,4 +1,4 @@
-# PDFAgent
+# PDFMind
 
 An agent for extracting structured content from PDFs using LangGraph and OpenAI.
 
