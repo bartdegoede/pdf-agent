@@ -18,9 +18,10 @@ curl -sSL https://install.python-poetry.org | python3 -
 # Install dependencies
 poetry install
 
-# Optional: Install Tesseract OCR for better text extraction
-# macOS: brew install tesseract
-# Ubuntu: apt-get install tesseract-ocr
+# Install other dependencies
+brew install ghostscript
+brew install poppler
+# apt install ghostscript
 ```
 
 ## Usage
