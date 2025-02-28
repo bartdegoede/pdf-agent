@@ -10,7 +10,8 @@ class PDFExtractionConfig(BaseModel):
     # OpenAI configuration
     openai_api_key: Optional[str] = Field(
         default=None,
-        description="OpenAI API key. If not provided, will try to read from OPENAI_API_KEY env var.",
+        description="OpenAI API key. If not provided, will try to read from "
+        "OPENAI_API_KEY env var.",
     )
     openai_model: str = Field(
         default="gpt-4o",
