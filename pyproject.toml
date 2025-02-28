@@ -34,9 +34,9 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.black]
-line-length = 88
+line-length = 120
 
 [tool.ruff]
-line-length = 88
+line-length = 120
 select = ["E", "F", "I"]
 ignore = []
