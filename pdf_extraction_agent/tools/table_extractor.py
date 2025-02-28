@@ -173,6 +173,11 @@ class TableExtractorTool:
                 markdown_tables = response.content
                 llm_time = time.time() - llm_start
                 logger.info(f"LLM processed page {page_num} in {llm_time:.2f} seconds")
+                
+                # Check if token information is available
+                if hasattr(response, 'usage') and response.usage is not None:
+                    page_tokens = getattr(response.usage, 'total_tokens', 0)
+                    logger.info(f"Table extraction token usage for page {page_num}: {page_tokens} tokens")
 
                 # If tables were found
                 if "No tables found" not in markdown_tables:

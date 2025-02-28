@@ -95,6 +95,7 @@ class PDFReaderTool:
             logger.info(f"PDF converted to {len(images)} images in {conversion_time:.2f} seconds")
             
             all_text = ""
+            total_tokens = 0
 
             for i, img in enumerate(images):
                 logger.info(f"Processing image {i+1}/{len(images)} with LLM OCR")
@@ -134,6 +135,12 @@ class PDFReaderTool:
                 page_text = response.content
                 llm_time = time.time() - llm_start
                 logger.info(f"LLM returned {len(page_text)} chars for image {i+1} in {llm_time:.2f} seconds")
+                
+                # Check if token information is available (depends on the LLM implementation)
+                if hasattr(response, 'usage') and response.usage is not None:
+                    page_tokens = getattr(response.usage, 'total_tokens', 0)
+                    total_tokens += page_tokens
+                    logger.info(f"OCR token usage for page {i+1}: {page_tokens} tokens")
 
                 all_text += f"Page {i+1}:\n{page_text}\n\n"
                 
@@ -142,6 +149,8 @@ class PDFReaderTool:
 
             total_time = time.time() - start_time
             logger.info(f"LLM OCR extraction completed in {total_time:.2f} seconds, total {len(all_text)} chars")
+            if total_tokens > 0:
+                logger.info(f"Total OCR token usage across all pages: {total_tokens} tokens")
             return all_text
         except Exception as e:
             elapsed = time.time() - start_time

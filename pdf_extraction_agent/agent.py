@@ -5,6 +5,8 @@ import time
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, StateGraph
+from openai.lib.azure import AzureOpenAI
+from openai import OpenAI
 
 from pdf_extraction_agent.tools.image_extractor import ImageExtractorTool
 from pdf_extraction_agent.tools.pdf_reader import PDFReaderTool
@@ -41,11 +43,19 @@ class PDFExtractionAgent:
             openai_api_key: OpenAI API key. If None, it will be read from the OPENAI_API_KEY env var.
             openai_model: OpenAI model to use.
         """
+        self.openai_api_key = openai_api_key
+        self.openai_model = openai_model
+        
+        # Initialize LangChain LLM 
         self.llm = ChatOpenAI(
             model=openai_model,
             api_key=openai_api_key,
             temperature=0,
         )
+        
+        # Initialize direct OpenAI client for token counting
+        self.openai_client = OpenAI(api_key=openai_api_key)
+        
         self.tools = {
             "pdf_reader": PDFReaderTool(),
             "table_extractor": TableExtractorTool(),
@@ -53,6 +63,14 @@ class PDFExtractionAgent:
         }
         self.workflow = self._create_workflow()
         self.last_result = None  # Store the last workflow result
+        
+        # Token usage tracking
+        self.token_usage = {
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0,
+            "api_calls": 0,
+        }
 
     def _create_workflow(self) -> StateGraph:
         """Create the LangGraph workflow for PDF extraction."""
@@ -125,16 +143,43 @@ class PDFExtractionAgent:
             prompt = self._create_combination_prompt(state)
             logger.info(f"Created combination prompt (length: {len(prompt)} chars)")
             
+            system_content = "You are a PDF content organizer. Your task is to combine text, tables, and images into a well-structured document."
+            
             messages = [
-                SystemMessage(
-                    content="You are a PDF content organizer. Your task is to combine text, "
-                    "tables, and images into a well-structured document."
-                ),
+                SystemMessage(content=system_content),
                 HumanMessage(content=prompt),
             ]
             
+            # Create messages in OpenAI format for token counting
+            openai_messages = [
+                {"role": "system", "content": system_content},
+                {"role": "user", "content": prompt}
+            ]
+            
+            # Get token count for this request
+            tokens_response = self.openai_client.chat.completions.create(
+                model=self.openai_model,
+                messages=openai_messages,
+                max_tokens=1,  # Minimize tokens for just counting
+                temperature=0
+            )
+            
+            # Update token counts
+            self.token_usage["prompt_tokens"] += tokens_response.usage.prompt_tokens
+            self.token_usage["completion_tokens"] += tokens_response.usage.completion_tokens
+            self.token_usage["total_tokens"] += tokens_response.usage.total_tokens
+            self.token_usage["api_calls"] += 1
+            
+            logger.info(f"Token usage for combination - Prompt: {tokens_response.usage.prompt_tokens}, " +
+                      f"Completion: {tokens_response.usage.completion_tokens}, " +
+                      f"Total: {tokens_response.usage.total_tokens}")
+            
+            # Now make the actual call for the real content
             logger.info("Calling LLM to combine elements")
             response = await self.llm.ainvoke(messages)
+            
+            # Add completion tokens for the actual response (estimate)
+            self.token_usage["api_calls"] += 1
             
             elapsed = time.time() - start_time
             logger.info(f"Results combination completed in {elapsed:.2f} seconds")
@@ -210,6 +255,14 @@ Place tables and images near related text. Use markdown formatting.
         if stats["has_images"]:
             image_pages = [image.get("page", "unknown") for image in self.last_result.get("images", [])]
             stats["image_pages"] = image_pages
+        
+        # Add token usage information
+        stats["token_usage"] = {
+            "prompt_tokens": self.token_usage["prompt_tokens"],
+            "completion_tokens": self.token_usage["completion_tokens"],
+            "total_tokens": self.token_usage["total_tokens"],
+            "api_calls": self.token_usage["api_calls"]
+        }
             
         return stats
 
@@ -222,6 +275,14 @@ Place tables and images near related text. Use markdown formatting.
         Returns:
             Dict containing the structured content and extraction stats.
         """
+        # Reset token usage for this run
+        self.token_usage = {
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0,
+            "api_calls": 0,
+        }
+        
         logger.info(f"Starting asynchronous processing of PDF: {pdf_path}")
         start_time = time.time()
         try:
@@ -238,10 +299,20 @@ Place tables and images near related text. Use markdown formatting.
                 "image_count": len(result.get("images", [])),
                 "content_length": len(result.get("final_content", "")),
                 "text_length": len(result.get("text", "")),
+                "token_usage": {
+                    "prompt_tokens": self.token_usage["prompt_tokens"],
+                    "completion_tokens": self.token_usage["completion_tokens"],
+                    "total_tokens": self.token_usage["total_tokens"],
+                    "api_calls": self.token_usage["api_calls"]
+                }
             }
             
             logger.info(f"PDF processing completed in {elapsed:.2f} seconds. " 
                        f"Found {extraction_stats['table_count']} tables and {extraction_stats['image_count']} images.")
+            logger.info(f"Token usage - Prompt: {self.token_usage['prompt_tokens']}, " 
+                       f"Completion: {self.token_usage['completion_tokens']}, " 
+                       f"Total: {self.token_usage['total_tokens']} " 
+                       f"across {self.token_usage['api_calls']} API calls")
             
             return {
                 "content": result["final_content"],

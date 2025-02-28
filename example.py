@@ -59,6 +59,15 @@ if os.path.exists(PDF_PATH):
         print(f"- Generated {stats['content_length']} characters of content")
         print(f"- Processed in {stats['total_time']:.2f} seconds")
         
+        # Display token usage if available
+        if 'token_usage' in stats:
+            token_usage = stats['token_usage']
+            print(f"\nToken usage:")
+            print(f"- Prompt tokens: {token_usage['prompt_tokens']}")
+            print(f"- Completion tokens: {token_usage['completion_tokens']}")
+            print(f"- Total tokens: {token_usage['total_tokens']}")
+            print(f"- API calls: {token_usage['api_calls']}")
+        
         # Get detailed stats if available
         detailed_stats = agent.get_extraction_stats()
         if detailed_stats:

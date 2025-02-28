@@ -140,6 +140,11 @@ class ImageExtractorTool:
             llm_time = time.time() - llm_start
             logger.info(f"LLM generated description ({len(description)} chars) in {llm_time:.2f} seconds")
             
+            # Note: For the vision API, we can't directly count tokens as easily as with text
+            # Token usage may be tracked in the llm object if available
+            if hasattr(response, 'usage') and response.usage is not None:
+                logger.info(f"Image token usage - Total: {getattr(response.usage, 'total_tokens', 'unknown')}")
+            
             elapsed = time.time() - start_time
             logger.info(f"Description generation completed in {elapsed:.2f} seconds")
             return description
