@@ -15,9 +15,7 @@ logger = logging.getLogger("pdf_extraction_agent.table_extractor")
 class TableExtractorTool:
     """Tool for extracting tables from PDFs and converting them to markdown."""
 
-    def extract_tables(
-        self, pdf_path: str, llm: Optional[Any] = None, pages: str = "all"
-    ) -> List[Dict[str, Any]]:
+    def extract_tables(self, pdf_path: str, llm: Optional[Any] = None, pages: str = "all") -> List[Dict[str, Any]]:
         """Extract tables from a PDF file.
 
         Args:
@@ -44,7 +42,7 @@ class TableExtractorTool:
 
     def _extract_with_camelot(self, pdf_path: str, pages: str) -> List[Dict[str, Any]]:
         """Extract tables using Camelot."""
-        logger.info(f"Extracting tables with Camelot from {pdf_path}, pages={pages}")
+        logger.info("Extracting tables with Camelot from %s, pages=%s", pdf_path, pages)
         start_time = time.time()
         try:
             # Convert pages parameter to format Camelot expects
@@ -52,31 +50,31 @@ class TableExtractorTool:
                 pages = "1-end"
                 logger.info("Processing all pages")
             else:
-                logger.info(f"Processing specific pages: {pages}")
+                logger.info("Processing specific pages: %s", pages)
 
             # Extract tables
             logger.info("Calling Camelot to extract tables")
             extraction_start = time.time()
             tables_data = camelot.read_pdf(pdf_path, pages=pages, flavor="lattice")
             extraction_time = time.time() - extraction_start
-            logger.info(f"Camelot found {len(tables_data)} tables in {extraction_time:.2f} seconds")
+            logger.info("Camelot found %d tables in %0.2f seconds", len(tables_data), extraction_time)
 
             # Process extracted tables
             result = []
             for i, table in enumerate(tables_data):
-                logger.info(f"Processing table {i+1}/{len(tables_data)}")
+                logger.info("Processing table %d/%d", i + 1, len(tables_data))
                 table_start = time.time()
-                
+
                 # Convert to pandas DataFrame
                 df = table.df
 
                 # Get page number
                 page_num = table.page
-                logger.info(f"Table {i+1} is on page {page_num}")
+                logger.info("Table %d is on page %d", i + 1, page_num)
 
                 # Convert to markdown
                 markdown = df.to_markdown(index=False)
-                
+
                 result.append(
                     {
                         "page": page_num,
@@ -84,37 +82,35 @@ class TableExtractorTool:
                         "data": df.to_dict(orient="records"),
                     }
                 )
-                
+
                 table_time = time.time() - table_start
-                logger.info(f"Table {i+1} processed in {table_time:.2f} seconds")
+                logger.info("Table %d processed in %0.2f seconds", i + 1, table_time)
 
             elapsed = time.time() - start_time
-            logger.info(f"Camelot extraction completed in {elapsed:.2f} seconds, found {len(result)} tables")
+            logger.info("Camelot extraction completed in %0.2f seconds, found %d tables", elapsed, len(result))
             return result
         except Exception as e:
             elapsed = time.time() - start_time
-            logger.error(f"Error extracting tables with Camelot after {elapsed:.2f} seconds: {str(e)}", exc_info=True)
+            logger.error("Error extracting tables with Camelot after %0.2f seconds: %s", elapsed, str(e), exc_info=True)
             return []
 
-    def _extract_with_llm(
-        self, pdf_path: str, llm: Any, pages: str
-    ) -> List[Dict[str, Any]]:
+    def _extract_with_llm(self, pdf_path: str, llm: Any, pages: str) -> List[Dict[str, Any]]:
         """Extract tables using a vision-capable LLM."""
-        logger.info(f"Extracting tables with LLM from {pdf_path}, pages={pages}")
+        logger.info("Extracting tables with LLM from %s, pages=%s", pdf_path, pages)
         start_time = time.time()
         try:
             # Convert PDF to images
             logger.info("Converting PDF to images for LLM table extraction")
             conversion_start = time.time()
-            
+
             if pages == "all":
                 images = convert_from_path(pdf_path)
                 page_indices = list(range(len(images)))
-                logger.info(f"Converting all {len(images)} pages to images")
+                logger.info("Converting all %d pages to images", len(images))
             else:
                 # Parse pages string into list of page indices (0-based)
-                logger.info(f"Parsing page specification: {pages}")
-                page_nums = []
+                logger.info("Parsing page specification: %s", pages)
+                page_nums: List[int] = []
                 for part in pages.split(","):
                     if "-" in part:
                         start, end = map(int, part.split("-"))
@@ -122,21 +118,21 @@ class TableExtractorTool:
                     else:
                         page_nums.append(int(part))
                 page_indices = [num - 1 for num in page_nums]  # Convert to 0-based
-                logger.info(f"Converted to page indices (0-based): {page_indices}")
-                
+                logger.info("Converted to page indices (0-based): %s", page_indices)
+
                 images = convert_from_path(pdf_path)
-                logger.info(f"PDF converted to {len(images)} total images")
+                logger.info("PDF converted to %d total images", len(images))
                 images = [images[i] for i in page_indices if i < len(images)]
-                logger.info(f"Selected {len(images)} images for processing")
-            
+                logger.info("Selected %d images for processing", len(images))
+
             conversion_time = time.time() - conversion_start
-            logger.info(f"PDF to image conversion completed in {conversion_time:.2f} seconds")
+            logger.info("PDF to image conversion completed in %0.2f seconds", conversion_time)
 
             result = []
 
             for i, img in enumerate(images):
                 page_num = page_indices[i] + 1  # Convert back to 1-based
-                logger.info(f"Processing image {i+1}/{len(images)} (page {page_num})")
+                logger.info("Processing image %d/%d (page %d)", i + 1, len(images), page_num)
                 page_start = time.time()
 
                 # Encode image to base64 for API
@@ -145,7 +141,7 @@ class TableExtractorTool:
                 img.save(buffered, format="PNG")
                 img_str = base64.b64encode(buffered.getvalue()).decode()
                 encode_time = time.time() - encode_start
-                logger.info(f"Image for page {page_num} encoded in {encode_time:.2f} seconds")
+                logger.info("Image for page %d encoded in %0.2f seconds", page_num, encode_time)
 
                 # Create prompt with the image
                 messages = [
@@ -154,34 +150,35 @@ class TableExtractorTool:
                         "content": [
                             {
                                 "type": "text",
-                                "text": "Identify and extract all tables from this image. Convert each table to markdown format. Only include tables, not other text content. If no tables are present, respond with 'No tables found'.",
+                                "text": "Identify and extract all tables from this image. "
+                                "Convert each table to markdown format. "
+                                "Only include tables, not other text content. "
+                                "If no tables are present, respond with 'No tables found'.",
                             },
                             {
                                 "type": "image_url",
-                                "image_url": {
-                                    "url": f"data:image/png;base64,{img_str}"
-                                },
+                                "image_url": {"url": f"data:image/png;base64,{img_str}"},
                             },
                         ],
                     }
                 ]
 
                 # Call LLM
-                logger.info(f"Sending page {page_num} to LLM API for table extraction")
+                logger.info("Sending page %d to LLM API for table extraction", page_num)
                 llm_start = time.time()
                 response = llm.invoke(messages)
                 markdown_tables = response.content
                 llm_time = time.time() - llm_start
-                logger.info(f"LLM processed page {page_num} in {llm_time:.2f} seconds")
-                
+                logger.info("LLM processed page %d in %0.2f seconds", page_num, llm_time)
+
                 # Check if token information is available
-                if hasattr(response, 'usage') and response.usage is not None:
-                    page_tokens = getattr(response.usage, 'total_tokens', 0)
-                    logger.info(f"Table extraction token usage for page {page_num}: {page_tokens} tokens")
+                if hasattr(response, "usage") and response.usage is not None:
+                    page_tokens = getattr(response.usage, "total_tokens", 0)
+                    logger.info("Table extraction token usage for page %d: %d tokens", page_num, page_tokens)
 
                 # If tables were found
                 if "No tables found" not in markdown_tables:
-                    logger.info(f"Tables found on page {page_num}")
+                    logger.info("Tables found on page %d", page_num)
                     result.append(
                         {
                             "page": page_num,
@@ -190,15 +187,15 @@ class TableExtractorTool:
                         }
                     )
                 else:
-                    logger.info(f"No tables found on page {page_num}")
-                
+                    logger.info("No tables found on page %d", page_num)
+
                 page_time = time.time() - page_start
-                logger.info(f"Completed processing page {page_num} in {page_time:.2f} seconds")
+                logger.info("Completed processing page %d in %0.2f seconds", page_num, page_time)
 
             elapsed = time.time() - start_time
-            logger.info(f"LLM table extraction completed in {elapsed:.2f} seconds, found {len(result)} tables")
+            logger.info("LLM table extraction completed in %0.2f seconds, found %d tables", elapsed, len(result))
             return result
         except Exception as e:
             elapsed = time.time() - start_time
-            logger.error(f"Error extracting tables with LLM after {elapsed:.2f} seconds: {str(e)}", exc_info=True)
+            logger.error("Error extracting tables with LLM after %0.2f seconds: %s", elapsed, str(e), exc_info=True)
             return []
