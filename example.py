@@ -39,15 +39,35 @@ if os.path.exists(PDF_PATH):
     try:
         result = agent.process(PDF_PATH)
         
-        # Save the result to a markdown file
+        # Get content and stats
+        content = result["content"]
+        stats = result["stats"]
+        
+        # Save the content to a markdown file
         OUTPUT_PATH = PDF_PATH.replace(".pdf", ".md")
         logger.info(f"Writing results to {OUTPUT_PATH}")
         with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
-            f.write(result)
+            f.write(content)
         
         elapsed = time.time() - start_time
         logger.info(f"Extraction complete in {elapsed:.2f} seconds! Results saved to {OUTPUT_PATH}")
-        print(f"Extraction complete! Results saved to {OUTPUT_PATH}")
+        
+        # Display stats to the user
+        print(f"Extraction summary:")
+        print(f"- Extracted {stats['table_count']} tables")
+        print(f"- Extracted {stats['image_count']} images")
+        print(f"- Generated {stats['content_length']} characters of content")
+        print(f"- Processed in {stats['total_time']:.2f} seconds")
+        
+        # Get detailed stats if available
+        detailed_stats = agent.get_extraction_stats()
+        if detailed_stats:
+            if detailed_stats["has_tables"]:
+                print(f"\nTables found on pages: {', '.join(map(str, detailed_stats['table_pages']))}")
+            if detailed_stats["has_images"]:
+                print(f"Images found on pages: {', '.join(map(str, detailed_stats['image_pages']))}")
+                
+        print(f"\nResults saved to {OUTPUT_PATH}")
     except Exception as e:
         elapsed = time.time() - start_time
         logger.error(f"Extraction failed after {elapsed:.2f} seconds: {str(e)}", exc_info=True)

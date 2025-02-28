@@ -52,6 +52,7 @@ class PDFExtractionAgent:
             "image_extractor": ImageExtractorTool(),
         }
         self.workflow = self._create_workflow()
+        self.last_result = None  # Store the last workflow result
 
     def _create_workflow(self) -> StateGraph:
         """Create the LangGraph workflow for PDF extraction."""
@@ -179,36 +180,86 @@ Place tables and images near related text. Use markdown formatting.
         for i, image in enumerate(images):
             result += f"Image {i+1}: {image['description']}\n\n"
         return result
+    
+    def get_extraction_stats(self) -> Dict[str, Any]:
+        """Get statistics from the most recent extraction.
+        
+        Returns:
+            Dictionary containing extraction statistics or None if no extraction has been performed.
+        """
+        if self.last_result is None:
+            logger.warning("No extraction has been performed yet")
+            return None
+        
+        # Calculate stats from the last result
+        stats = {
+            "table_count": len(self.last_result.get("tables", [])),
+            "image_count": len(self.last_result.get("images", [])),
+            "content_length": len(self.last_result.get("final_content", "")),
+            "text_length": len(self.last_result.get("text", "")),
+            "has_tables": len(self.last_result.get("tables", [])) > 0,
+            "has_images": len(self.last_result.get("images", [])) > 0,
+        }
+        
+        # Add table details if present
+        if stats["has_tables"]:
+            table_pages = [table.get("page", "unknown") for table in self.last_result.get("tables", [])]
+            stats["table_pages"] = table_pages
+        
+        # Add image details if present
+        if stats["has_images"]:
+            image_pages = [image.get("page", "unknown") for image in self.last_result.get("images", [])]
+            stats["image_pages"] = image_pages
+            
+        return stats
 
-    async def aprocess(self, pdf_path: str) -> str:
+    async def aprocess(self, pdf_path: str) -> Dict[str, Any]:
         """Process a PDF and extract structured content asynchronously.
 
         Args:
             pdf_path: Path to the PDF file.
 
         Returns:
-            Structured content extracted from the PDF.
+            Dict containing the structured content and extraction stats.
         """
         logger.info(f"Starting asynchronous processing of PDF: {pdf_path}")
         start_time = time.time()
         try:
             result = await self.workflow.ainvoke({"pdf_path": pdf_path})
             elapsed = time.time() - start_time
-            logger.info(f"PDF processing completed in {elapsed:.2f} seconds")
-            return result["final_content"]
+            
+            # Store the complete workflow result
+            self.last_result = result
+            
+            # Create extraction stats
+            extraction_stats = {
+                "total_time": elapsed,
+                "table_count": len(result.get("tables", [])),
+                "image_count": len(result.get("images", [])),
+                "content_length": len(result.get("final_content", "")),
+                "text_length": len(result.get("text", "")),
+            }
+            
+            logger.info(f"PDF processing completed in {elapsed:.2f} seconds. " 
+                       f"Found {extraction_stats['table_count']} tables and {extraction_stats['image_count']} images.")
+            
+            return {
+                "content": result["final_content"],
+                "stats": extraction_stats
+            }
         except Exception as e:
             elapsed = time.time() - start_time
             logger.error(f"PDF processing failed after {elapsed:.2f} seconds: {str(e)}", exc_info=True)
             raise
 
-    def process(self, pdf_path: str) -> str:
+    def process(self, pdf_path: str) -> Dict[str, Any]:
         """Process a PDF and extract structured content.
 
         Args:
             pdf_path: Path to the PDF file.
 
         Returns:
-            Structured content extracted from the PDF.
+            Dict containing the structured content and extraction stats.
         """
         import asyncio
 
