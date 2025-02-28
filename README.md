@@ -1,6 +1,6 @@
-# PDF Extraction Agent
+# PDFAgent
 
-An intelligent agent for extracting structured content from PDFs using LangGraph and OpenAI.
+An agent for extracting structured content from PDFs using LangGraph and OpenAI.
 
 ## Features
 
@@ -27,7 +27,7 @@ brew install poppler
 ## Usage
 
 ```python
-from pdf_extraction_agent import PDFExtractionAgent
+from pdf_agent import PDFExtractionAgent
 
 agent = PDFExtractionAgent()
 result = agent.process("path/to/document.pdf")

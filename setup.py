@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 setup(
     name="pdf-extraction-agent",
@@ -19,7 +19,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "pdf-extract=pdf_extraction_agent.cli:main",
+            "pdf-extract=pdf_agent.cli:main",
         ],
     },
     python_requires=">=3.10",

@@ -5,16 +5,15 @@ from typing import Any, Dict, List, Optional, TypedDict
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, StateGraph
+from langgraph.graph.state import CompiledStateGraph
 from openai import OpenAI
 
-from pdf_extraction_agent.tools.image_extractor import ImageExtractorTool
-from pdf_extraction_agent.tools.pdf_reader import PDFReaderTool
-from pdf_extraction_agent.tools.table_extractor import TableExtractorTool
+from pdf_agent.tools.image_extractor import ImageExtractorTool
+from pdf_agent.tools.pdf_reader import PDFReaderTool
+from pdf_agent.tools.table_extractor import TableExtractorTool
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("pdf_extraction_agent")
 
 
@@ -55,11 +54,9 @@ class PDFExtractionAgent:
         # Initialize direct OpenAI client for token counting
         self.openai_client = OpenAI(api_key=openai_api_key)
 
-        self.tools = {
-            "pdf_reader": PDFReaderTool(),
-            "table_extractor": TableExtractorTool(),
-            "image_extractor": ImageExtractorTool(),
-        }
+        self.pdf_reader = PDFReaderTool()
+        self.table_extractor = TableExtractorTool()
+        self.image_extractor = ImageExtractorTool()
         self.workflow = self._create_workflow()
         self.last_result = None  # Store the last workflow result
 
@@ -71,7 +68,7 @@ class PDFExtractionAgent:
             "api_calls": 0,
         }
 
-    def _create_workflow(self) -> StateGraph:
+    def _create_workflow(self) -> CompiledStateGraph:
         """Create the LangGraph workflow for PDF extraction."""
         workflow = StateGraph(PDFExtractionState)
 
@@ -98,12 +95,13 @@ class PDFExtractionAgent:
         logger.info("Starting text extraction from PDF: %s", pdf_path)
         start_time = time.time()
         try:
-            text = self.tools["pdf_reader"].extract_text(pdf_path)
+            text = self.pdf_reader.extract_text(pdf_path)
             elapsed = time.time() - start_time
             logger.info("Text extraction completed in %.2f seconds", elapsed)
             return {"pdf_path": pdf_path, "text": text}
         except Exception as e:
-            logger.error(f"Text extraction failed: {str(e)}", exc_info=True)
+            logger.error("Text extraction failed: %s", str(e), exc_info=True)
+
             raise
 
     async def _extract_tables(self, state: PDFExtractionState) -> PDFExtractionState:
@@ -112,7 +110,7 @@ class PDFExtractionAgent:
         logger.info("Starting table extraction from PDF: %s", pdf_path)
         start_time = time.time()
         try:
-            tables = self.tools["table_extractor"].extract_tables(pdf_path)
+            tables = self.table_extractor.extract_tables(pdf_path)
             elapsed = time.time() - start_time
             logger.info(
                 "Table extraction completed in %.2f seconds, found %d tables",
@@ -130,7 +128,7 @@ class PDFExtractionAgent:
         logger.info("Starting image extraction from PDF: %s", pdf_path)
         start_time = time.time()
         try:
-            images = self.tools["image_extractor"].extract_images(pdf_path, self.llm)
+            images = self.image_extractor.extract_images(pdf_path, self.llm)
             elapsed = time.time() - start_time
             logger.info(
                 "Image extraction completed in %.2f seconds, found %d images",
@@ -176,9 +174,7 @@ class PDFExtractionAgent:
 
             # Update token counts
             self.token_usage["prompt_tokens"] += tokens_response.usage.prompt_tokens
-            self.token_usage["completion_tokens"] += (
-                tokens_response.usage.completion_tokens
-            )
+            self.token_usage["completion_tokens"] += tokens_response.usage.completion_tokens
             self.token_usage["total_tokens"] += tokens_response.usage.total_tokens
             self.token_usage["api_calls"] += 1
 
@@ -211,10 +207,10 @@ TEXT:
 {state.get('text', 'No text extracted')}
 
 TABLES:
-{self._format_tables(state.get('tables', []))}
+{self._format_tables(state.get('tables') or [])}
 
 IMAGES:
-{self._format_images(state.get('images', []))}
+{self._format_images(state.get('images') or [])}
 
 Please combine these elements into a well-structured document, maintaining the logical flow.
 Place tables and images near related text. Use markdown formatting.
@@ -249,7 +245,7 @@ Place tables and images near related text. Use markdown formatting.
         """
         if self.last_result is None:
             logger.warning("No extraction has been performed yet")
-            return None
+            return {}
 
         # Calculate stats from the last result
         stats = {
@@ -263,18 +259,12 @@ Place tables and images near related text. Use markdown formatting.
 
         # Add table details if present
         if stats["has_tables"]:
-            table_pages = [
-                table.get("page", "unknown")
-                for table in self.last_result.get("tables", [])
-            ]
+            table_pages = [table.get("page", "unknown") for table in self.last_result.get("tables", [])]
             stats["table_pages"] = table_pages
 
         # Add image details if present
         if stats["has_images"]:
-            image_pages = [
-                image.get("page", "unknown")
-                for image in self.last_result.get("images", [])
-            ]
+            image_pages = [image.get("page", "unknown") for image in self.last_result.get("images", [])]
             stats["image_pages"] = image_pages
 
         # Add token usage information
@@ -329,21 +319,26 @@ Place tables and images near related text. Use markdown formatting.
             }
 
             logger.info(
-                f"PDF processing completed in {elapsed:.2f} seconds. "
-                f"Found {extraction_stats['table_count']} tables and {extraction_stats['image_count']} images."
+                "PDF processing completed in %.2f seconds. Found %d tables and %d images.",
+                elapsed,
+                extraction_stats["table_count"],
+                extraction_stats["image_count"],
             )
             logger.info(
-                f"Token usage - Prompt: {self.token_usage['prompt_tokens']}, "
-                f"Completion: {self.token_usage['completion_tokens']}, "
-                f"Total: {self.token_usage['total_tokens']} "
-                f"across {self.token_usage['api_calls']} API calls"
+                "Token usage - Prompt: %d, Completion: %d, Total: %d across %d API calls",
+                self.token_usage["prompt_tokens"],
+                self.token_usage["completion_tokens"],
+                self.token_usage["total_tokens"],
+                self.token_usage["api_calls"],
             )
 
             return {"content": result["final_content"], "stats": extraction_stats}
         except Exception as e:
             elapsed = time.time() - start_time
             logger.error(
-                f"PDF processing failed after {elapsed:.2f} seconds: {str(e)}",
+                "PDF processing failed after %.2f seconds: %s",
+                elapsed,
+                str(e),
                 exc_info=True,
             )
             raise
@@ -380,14 +375,14 @@ Place tables and images near related text. Use markdown formatting.
             result = loop.run_until_complete(self.aprocess(pdf_path))
 
             elapsed = time.time() - start_time
-            logger.info(
-                f"Synchronous PDF processing completed in {elapsed:.2f} seconds"
-            )
+            logger.info("Synchronous PDF processing completed in %.2f seconds", elapsed)
             return result
         except Exception as e:
             elapsed = time.time() - start_time
             logger.error(
-                f"Synchronous PDF processing failed after {elapsed:.2f} seconds: {str(e)}",
+                "PDF processing failed after %.2f seconds: %s",
+                elapsed,
+                str(e),
                 exc_info=True,
             )
             raise
