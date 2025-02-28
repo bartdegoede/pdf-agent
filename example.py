@@ -28,7 +28,7 @@ if not api_key:
 
 # Initialize the agent
 logger.info("Initializing PDF Extraction Agent")
-agent = PDFExtractionAgent(openai_api_key=api_key, openai_model="gpt-4o-mini")
+agent = PDFExtractionAgent(openai_api_key=api_key, openai_model="gpt-4o")
 
 # Process a PDF file
 PDF_PATH = "example.pdf"  # Replace with your PDF path
