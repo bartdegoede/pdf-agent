@@ -26,6 +26,15 @@ brew install poppler
 # apt install ghostscript poppler
 ```
 
+N.B.: if you're on OSX, the Ghostscript module may not be found. You can fix that by doing:
+
+```bash
+mkdir -p ~/lib
+ln -s "$(brew --prefix gs)/lib/libgs.dylib" ~/lib
+```
+
+See the [Camelot docs](https://camelot-py.readthedocs.io/en/master/user/install-deps.html) for more details on installing the dependency. It'll work without Ghostscript.
+
 ## Usage
 
 ```python
