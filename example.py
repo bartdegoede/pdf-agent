@@ -7,7 +7,7 @@ import logging
 import os
 import time
 
-from pdf_agent import PDFExtractionAgent
+from pdf_mind import PDFExtractionAgent
 
 # Configure root logger
 logging.basicConfig(
