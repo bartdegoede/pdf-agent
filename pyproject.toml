@@ -1,0 +1,42 @@
+[tool.poetry]
+name = "pdf-extraction-agent"
+version = "0.1.0"
+description = "Agent for extracting structured content from PDFs using LangGraph"
+authors = ["Bart de Goede <bdegoede+pdf-extraction-agent@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+langchain = "^0.3.19"
+langgraph = "^0.3.1"
+openai = "^1.65.1"
+pypdf = "^4.0.2"
+pillow = "^10.2.0"
+pydantic = "^2.10.6"
+pandas = "^2.2.0"
+pdf2image = "^1.17.0"
+camelot-py = {extras = ["cv"], version = "^0.11.0"}
+click = "^8.1.7"
+tabulate = "^0.9.0"
+langchain-openai = "^0.3.7"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.4"
+black = "^24.2.0"
+ruff = "^0.2.2"
+mypy = "^1.8.0"
+
+[tool.poetry.scripts]
+pdf-extract = "pdf_extraction_agent.cli:main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 120
+
+[tool.ruff]
+line-length = 120
+select = ["E", "F", "I"]
+ignore = []
