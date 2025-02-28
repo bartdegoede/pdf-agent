@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pdf-extraction-agent"
-version = "0.1.0"
+version = "0.1.1"
 description = "Agent for extracting structured content from PDFs using LangGraph"
 authors = ["Bart de Goede <bdegoede+pdf-extraction-agent@gmail.com>"]
 readme = "README.md"
